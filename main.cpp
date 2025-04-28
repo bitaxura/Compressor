@@ -269,7 +269,8 @@ void compress_file(const string& infile, const string& outfile) {
     auto start = chrono::high_resolution_clock::now();
 
     auto start1 = chrono::high_resolution_clock::now();
-    unordered_map<uint8_t, int> freq = build_frequency_table_parralel(buffer);
+    unordered_map<uint8_t, int> freq = build_frequency_table_parralel(buffer); //Multithreaded
+    //unordered_map<uint8_t, int> freq = build_frequency_table(buffer); //Single Core
     auto end1 = chrono::high_resolution_clock::now();
     chrono::duration<double> elapsed1 = end1 - start1;
     cout << "Time taken to build dict: " << elapsed1.count() << " seconds" << endl;
