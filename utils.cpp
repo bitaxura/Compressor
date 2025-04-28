@@ -40,3 +40,15 @@ int bytes_to_int(const vector<uint8_t>& buf) {
          | (static_cast<int>(buf[2]) << 16)
          | (static_cast<int>(buf[3]) << 24);
 }
+
+vector<ReadNode> bytes_to_nodes(const std::vector<uint8_t>& buf) {
+    std::vector<ReadNode> nodes;
+    for (size_t i = 0; i + 3 < buf.size(); i += 4) {
+        int l_type = buf[i];
+        int l_data = buf[i + 1];
+        int r_type = buf[i + 2];
+        int r_data = buf[i + 3];
+        nodes.emplace_back(l_type, l_data, r_type, r_data);
+    }
+    return nodes;
+}

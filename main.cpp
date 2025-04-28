@@ -321,7 +321,7 @@ void print_time_take(const chrono::high_resolution_clock::time_point& start, con
 int main() {
     char input;
 
-    cout << "Enter c to compress, d to decompress, or any other key to exit: ";
+    cout << "Enter c to compress or any other key to exit: ";
     cin >> input;
 
     if (input == 'c') {

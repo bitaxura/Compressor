@@ -27,3 +27,5 @@ uint8_t bits_to_byte(const string& bits);
 vector<uint8_t> int32_to_bytes(int num);
 
 int bytes_to_int(const vector<uint8_t>& buf);
+
+vector<ReadNode> bytes_to_nodes(const std::vector<uint8_t>& buf);
