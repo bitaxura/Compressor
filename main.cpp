@@ -253,12 +253,10 @@ double avg_length(const shared_ptr<HuffmanTree>& tree, const unordered_map<uint8
     return static_cast<double>(weighted_sum) / freq_total;
 }
 
+void print_time_take(const chrono::high_resolution_clock::time_point& start, const string& label);
+
 void compress_file(const string& infile, const string& outfile) {
     ifstream file(infile, ios::binary | ios::ate);
-    if (!file.is_open()) {
-        cerr << "Failed to open input file." << endl;
-        return;
-    }
 
     size_t size = file.tellg();
     vector<uint8_t> buffer(size);
@@ -270,34 +268,24 @@ void compress_file(const string& infile, const string& outfile) {
 
     auto start1 = chrono::high_resolution_clock::now();
     unordered_map<uint8_t, int> freq = build_frequency_table_parralel(buffer); //Multithreaded
-    //unordered_map<uint8_t, int> freq = build_frequency_table(buffer); //Single Core
-    auto end1 = chrono::high_resolution_clock::now();
-    chrono::duration<double> elapsed1 = end1 - start1;
-    cout << "Time taken to build dict: " << elapsed1.count() << " seconds" << endl;
+    //unordered_map<uint8_t, int> freq = build_frequency_table(buffer); //Single-Threaded
+    print_time_take(start1, "Build Frequency Table");
 
     auto start2 = chrono::high_resolution_clock::now();
     shared_ptr<HuffmanTree> tree = build_huffman_tree(freq);
-    auto end2 = chrono::high_resolution_clock::now();
-    chrono::duration<double> elapsed2 = end2 - start2;
-    cout << "Time taken to build tree: " << elapsed2.count() << " seconds" << endl;
+    print_time_take(start2, "Build Huffman Table");
 
     auto start3 = chrono::high_resolution_clock::now();
     unordered_map<uint8_t, string> code = get_codes(tree, "");
-    auto end3 = chrono::high_resolution_clock::now();
-    chrono::duration<double> elapsed3 = end3 - start3;
-    cout << "Time taken to get codes: " << elapsed3.count() << " seconds" << endl;
+    print_time_take(start3, "Get Codes");
 
     auto start4 = chrono::high_resolution_clock::now();
     number_nodes(tree);
-    auto end4 = chrono::high_resolution_clock::now();
-    chrono::duration<double> elapsed4 = end4 - start4;
-    cout << "Time taken to number nodes: " << elapsed4.count() << " seconds" << endl;
+    print_time_take(start4, "Number Nodes");
 
     auto start5 = chrono::high_resolution_clock::now();
     cout << "Bits Per Symbol: " << avg_length(tree, freq) << endl;
-    auto end5 = chrono::high_resolution_clock::now();
-    chrono::duration<double> elapsed5 = end5 - start5;
-    cout << "Time taken to calc avg length: " << elapsed5.count() << " seconds" << endl;
+    print_time_take(start5, "Calculate Avg Length");
 
     vector<uint8_t> result;
     vector<uint8_t> header = tree->num_nodes_to_bytes();
@@ -306,9 +294,7 @@ void compress_file(const string& infile, const string& outfile) {
 
     auto start6 = chrono::high_resolution_clock::now();
     vector<uint8_t> compressed_text = compress_bytes(buffer, code);
-    auto end6 = chrono::high_resolution_clock::now();
-    chrono::duration<double> elapsed6 = end6 - start6;
-    cout << "Time taken to compress bytes: " << elapsed6.count() << " seconds" << endl;
+    print_time_take(start6, "Time to compress bytes");
 
     result.insert(result.end(), header.begin(), header.end());
     result.insert(result.end(), structure.begin(), structure.end());
@@ -321,11 +307,15 @@ void compress_file(const string& infile, const string& outfile) {
 
     auto end = chrono::high_resolution_clock::now();
     chrono::duration<double> elapsed = end - start;
-    cout << "Time taken: " << elapsed.count() << " seconds" << endl;
+    cout << "Total Time taken: " << elapsed.count() << " seconds" << endl;
 
-    cout << "File compressed AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" << endl;
-    int input;
-    cin >> input;
+    cout << "File compressed" << endl;
+}
+
+void print_time_take(const chrono::high_resolution_clock::time_point& start, const string& label){
+    auto end = chrono::high_resolution_clock::now();
+    chrono::duration<double> elapsed = end - start;
+    cout << label << " took " << elapsed.count() << " seconds " << endl;
 }
 
 int main() {
