@@ -55,7 +55,7 @@ unordered_map<uint8_t, int> build_frequency_table(const vector<uint8_t>& data) {
 
 vector<pair<uint8_t, int>> merge_sort(const vector<pair<uint8_t, int>>& lst);
 vector<pair<uint8_t, int>> merge_vectors(const vector<pair<uint8_t, int>>& left, const vector<pair<uint8_t, int>>& right);
-
+    
 shared_ptr<HuffmanTree> build_huffman_tree(const unordered_map<uint8_t, int>& frequency_table) {
     vector<pair<uint8_t, int>> list;
     for (const auto& pair : frequency_table) {
@@ -318,10 +318,100 @@ void print_time_take(const chrono::high_resolution_clock::time_point& start, con
     cout << label << " took " << elapsed.count() << " seconds " << endl;
 }
 
+shared_ptr<HuffmanTree> generate_tree_general(const vector<ReadNode>& node_list, int root_index) {
+    auto node = node_list[root_index];
+
+    shared_ptr<HuffmanTree> left;
+    if (node.l_type == 0) {
+        left = make_shared<HuffmanTree>(node.l_data);
+    } else {
+        left = generate_tree_general(node_list, node.l_data);
+    }
+
+    shared_ptr<HuffmanTree> right;
+    if (node.r_type == 0) {
+        right = make_shared<HuffmanTree>(node.r_data);
+    } else {
+        right = generate_tree_general(node_list, node.r_data);
+    }
+
+    return make_shared<HuffmanTree>(nullopt, left, right);
+}
+
+vector<uint8_t> decompress_bytes(const shared_ptr<HuffmanTree>& tree, const vector<uint8_t>& bytes, int size) {
+    unordered_map<uint8_t, string> codes_dict = get_codes(tree, "");
+    unordered_map<string, uint8_t> codes_dict_reversed;
+    string bits_string;
+    string current_bits;
+    vector<uint8_t> output;
+
+    for (const auto& x : codes_dict) {
+        codes_dict_reversed[x.second] = x.first;
+    }
+
+    for (uint8_t byte : bytes) {
+        bits_string += byte_to_bits(byte);
+    }
+
+    for (char bit : bits_string) {
+        current_bits += bit;
+        if (codes_dict_reversed.count(current_bits)) {
+            output.push_back(codes_dict_reversed[current_bits]);
+            current_bits = "";
+            if (output.size() == size){
+                break;
+            }
+        }
+    }
+    return output;
+}
+
+void decompress_file(const string& in_file, const string& out_file) {
+    ifstream fin(in_file, ios::binary);
+    ofstream fout(out_file, ios::binary);
+
+    auto start = chrono::high_resolution_clock::now();
+
+    uint8_t num_nodes_byte;
+    fin.read(reinterpret_cast<char*>(&num_nodes_byte), 1);
+    int num_nodes = static_cast<int>(num_nodes_byte);
+
+    auto start1 = chrono::high_resolution_clock::now();
+    vector<uint8_t> node_buf(num_nodes * 4);
+    fin.read(reinterpret_cast<char*>(node_buf.data()), num_nodes * 4);
+    vector<ReadNode> node_lst = bytes_to_nodes(node_buf);
+    print_time_take(start1, "Time to bytes to nodes");
+
+    auto start2 = chrono::high_resolution_clock::now();
+    shared_ptr<HuffmanTree> tree = generate_tree_general(node_lst, num_nodes - 1);
+    print_time_take(start1, "Time to generate tree general");
+
+    auto start3 = chrono::high_resolution_clock::now();
+    vector<uint8_t> size_buf(4);
+    fin.read(reinterpret_cast<char*>(size_buf.data()), 4);
+    int size = bytes_to_int(size_buf);
+    print_time_take(start3, "Bytes to int");
+
+    auto start4 = chrono::high_resolution_clock::now();
+    vector<uint8_t> text((istreambuf_iterator<char>(fin)), istreambuf_iterator<char>());
+
+    vector<uint8_t> decompressed = decompress_bytes(tree, text, size);
+    print_time_take(start4, "decompress bytes");
+    
+    fout.write(reinterpret_cast<const char*>(decompressed.data()), decompressed.size());
+
+    auto end = chrono::high_resolution_clock::now();
+    chrono::duration<double> elapsed = end - start;
+    cout << "Total Time taken: " << elapsed.count() << " seconds" << endl;
+
+    cout << "File Decompressed" << endl;
+}
+
+
 int main() {
     char input;
 
-    cout << "Enter c to compress or any other key to exit: ";
+    cout << "Enter c to compress, d to decompress, or any other key to exit: ";
     cin >> input;
 
     if (input == 'c') {
@@ -330,10 +420,10 @@ int main() {
         cin >> file;
         compress_file(file, file + ".huf");
     }
-    /*else if (input == 'd'){
+    else if (input == 'd'){
         string file;
         cout<<"File to decompress: ";
         cin>>file;
-        
-    }*/
+        decompress_file(file, file + ".orig");
+    }
 }
