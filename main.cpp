@@ -9,13 +9,13 @@
 #include "utils.h"
 using namespace std;
 
-void build_frequency_table_parralel_helper(const vector<uint8_t>& data, int start, int end, unordered_map<uint8_t, int>& dict) { 
+void build_frequency_table_parallel_helper(const vector<uint8_t>& data, int start, int end, unordered_map<uint8_t, int>& dict) { 
     for (int i = start; i < end; i++){
         dict[data[i]]++;
     }
 }
 
-unordered_map<uint8_t, int> build_frequency_table_parralel(const vector<uint8_t>& data){
+unordered_map<uint8_t, int> build_frequency_table_parallel(const vector<uint8_t>& data){
     const int num_threads = thread::hardware_concurrency();
     const int size = data.size();
     const int chunk = (size + num_threads - 1) / num_threads;
@@ -27,7 +27,7 @@ unordered_map<uint8_t, int> build_frequency_table_parralel(const vector<uint8_t>
         int start = i * chunk;
         int end = min(start + chunk, size);
 
-        threads.emplace_back(build_frequency_table_parralel_helper, cref(data), start, end, ref(partial_dicts[i]));
+        threads.emplace_back(build_frequency_table_parallel_helper, cref(data), start, end, ref(partial_dicts[i]));
     }
     
     for (auto& t: threads){
@@ -267,7 +267,7 @@ void compress_file(const string& infile, const string& outfile) {
     auto start = chrono::high_resolution_clock::now();
 
     auto start1 = chrono::high_resolution_clock::now();
-    unordered_map<uint8_t, int> freq = build_frequency_table_parralel(buffer); //Multithreaded
+    unordered_map<uint8_t, int> freq = build_frequency_table_parallel(buffer); //Multithreaded
     //unordered_map<uint8_t, int> freq = build_frequency_table(buffer); //Single-Threaded
     print_time_take(start1, "Build Frequency Table");
 
