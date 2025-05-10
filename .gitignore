@@ -1,9 +1,17 @@
 .vscode/
 
+*.exe
+
 *.bmp
 *.huf
-*.exe
+*.orig
+
 *.mp4
 *.mp3
-*.orig
+
 *.optimized
+
+*.yaml
+*.py
+*.css
+*.html
