@@ -5,8 +5,8 @@
 #include <chrono>
 #include <thread>
 #include <mutex>
-#include <huffman.h>
-#include <utils.h>
+#include "huffman.h"
+#include "utils.h"
 using namespace std;
 
 void build_frequency_table_parralel_helper(const vector<uint8_t>& data, int start, int end, unordered_map<uint8_t, int>& dict) { 
