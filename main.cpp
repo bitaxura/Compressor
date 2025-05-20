@@ -4,10 +4,12 @@
 #include <unordered_map>
 #include <chrono>
 #include <thread>
-#include <mutex>
+#include <future>
 #include "huffman.h"
 #include "utils.h"
 using namespace std;
+
+const int num_threads = thread::hardware_concurrency();
 
 void build_frequency_table_parallel_helper(const vector<uint8_t>& data, int start, int end, unordered_map<uint8_t, int>& dict) { 
     for (int i = start; i < end; i++){
@@ -16,7 +18,6 @@ void build_frequency_table_parallel_helper(const vector<uint8_t>& data, int star
 }
 
 unordered_map<uint8_t, int> build_frequency_table_parallel(const vector<uint8_t>& data){
-    const int num_threads = thread::hardware_concurrency();
     const int size = data.size();
     const int chunk = (size + num_threads - 1) / num_threads;
 
@@ -47,9 +48,11 @@ unordered_map<uint8_t, int> build_frequency_table_parallel(const vector<uint8_t>
 
 unordered_map<uint8_t, int> build_frequency_table(const vector<uint8_t>& data) { 
     unordered_map<uint8_t, int> frequency_table;
+
     for (const uint8_t &byte : data) {
         frequency_table[byte]++;
     }
+
     return frequency_table;
 }
 
@@ -208,6 +211,67 @@ vector<uint8_t> tree_to_bytes(const shared_ptr<HuffmanTree>& tree) {
     return output;
 }
 
+string mapping_string_helper(const vector<uint8_t>& data, const unordered_map<uint8_t, string>& codes, int start, int end){
+    string result;
+    result.reserve((end-start) * 8);
+
+    for (int i = start; i < end; i++){
+        result += codes.at(data[i]);
+    }
+    return result;
+}
+
+vector<uint8_t> compress_data_helper(){
+
+}
+
+vector<uint8_t> compress_bytes_parallel(const vector<uint8_t>& data, const unordered_map<uint8_t, string>& codes){
+    //Part 1 Multi-threaded
+    auto start = chrono::high_resolution_clock::now();
+
+    const int size = data.size();
+    const int chunk = (size + num_threads - 1) / num_threads;
+
+    vector<future<string>> futures;
+
+    for (int i = 0; i < num_threads; i++) {
+        int chunk_start = i * chunk;
+        int chunk_end = min(chunk_start + chunk, size);
+
+        futures.emplace_back(async(launch::async, mapping_string_helper, cref(data), cref(codes), chunk_start, chunk_end));
+    }
+
+    string combined_mapped_string;
+    combined_mapped_string.reserve(data.size() * 8);
+
+    for (auto& f : futures){
+        combined_mapped_string += f.get();
+    }
+
+    auto end = chrono::high_resolution_clock::now();
+    cout << "Time taken to map string: "<< chrono::duration<double>(end - start).count() << " seconds\n";
+
+    //Part 2 (single-threaded)
+    auto start1 = chrono::high_resolution_clock::now();
+    vector<uint8_t> compressed_data;
+
+    for (int i = 0; i < combined_mapped_string.size(); i += 8) {
+        string byte = combined_mapped_string.substr(i, 8);
+
+        if (byte.size() < 8) {
+            byte.append(8 - byte.size(), '0');
+        }
+
+        compressed_data.push_back(bits_to_byte(byte));
+    }
+
+    auto end1 = chrono::high_resolution_clock::now();
+    chrono::duration<double> elapsed1 = end1 - start1;
+    cout << "Time taken to actually compress with 8 bytes: " << elapsed1.count() << " seconds" << endl;
+
+    return compressed_data;
+}
+
 vector<uint8_t> compress_bytes(const vector<uint8_t>& data, unordered_map<uint8_t, string>& codes) {
     string mapped_string;
     mapped_string.reserve(data.size() * 8);
@@ -225,7 +289,7 @@ vector<uint8_t> compress_bytes(const vector<uint8_t>& data, unordered_map<uint8_
     auto start1 = chrono::high_resolution_clock::now();
     vector<uint8_t> compressed_data;
 
-    for (size_t i = 0; i < mapped_string.size(); i += 8) {
+    for (int i = 0; i < mapped_string.size(); i += 8) {
         string byte = mapped_string.substr(i, 8);
 
         if (byte.size() < 8) {
@@ -237,7 +301,7 @@ vector<uint8_t> compress_bytes(const vector<uint8_t>& data, unordered_map<uint8_
 
     auto end1 = chrono::high_resolution_clock::now();
     chrono::duration<double> elapsed1 = end1 - start1;
-    cout << "Time taken to actuall compress with 8 bytes: " << elapsed1.count() << " seconds" << endl;
+    cout << "Time taken to actually compress with 8 bytes: " << elapsed1.count() << " seconds" << endl;
 
     return compressed_data;
 }
@@ -293,7 +357,8 @@ void compress_file(const string& infile, const string& outfile) {
     vector<uint8_t> text_len = int32_to_bytes(buffer.size());
 
     auto start6 = chrono::high_resolution_clock::now();
-    vector<uint8_t> compressed_text = compress_bytes(buffer, code);
+    vector<uint8_t> compressed_text = compress_bytes_parallel(buffer, code); //Multithreaded
+    //vector<uint8_t> compressed_text = compress_bytes(buffer, code); //Single-Threaded
     print_time_take(start6, "Time to compress bytes");
 
     result.insert(result.end(), header.begin(), header.end());
