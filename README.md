@@ -1,4 +1,4 @@
-```md
+```
 # Huffman Compression and Decompression
 
 This project implements a file compression and decompression utility using the Huffman coding algorithm. It supports both single-threaded and multi-threaded operations for efficient processing of large files.
