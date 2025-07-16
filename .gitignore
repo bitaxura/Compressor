@@ -1,6 +1,7 @@
 .vscode/
 __pycache__/
 opt_html/
+build/
 
 *.exe
 
